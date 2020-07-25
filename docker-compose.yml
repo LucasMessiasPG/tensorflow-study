@@ -1,0 +1,28 @@
+version: "3.2"
+services:
+  api:
+    build: ./api
+    command: npm run dev
+    volumes: 
+      - ./api:/usr/src/api
+    ports: 
+      - 8081:8081
+      - 9229:9229
+    networks:
+      - local-net
+    environment:
+      - ENV=dev
+  app:
+    build: ./app
+    command: "npm run start"
+    volumes: 
+      - ./app:/usr/src/app
+    ports: 
+      - 8080:8080
+    networks:
+      - local-net
+    # logging:
+    #   driver: none
+networks:
+  local-net:
+    driver: bridge
