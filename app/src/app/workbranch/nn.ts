@@ -20,25 +20,31 @@ export default class NeuralNetwork{
 
   static createModel(){
     const model = tf.sequential();
-    let hidden = tf.layers.dense({
+    let inputlayer = tf.layers.dense({
       inputShape: [INPUTS],
       units: HIDDEN,
       activation: 'sigmoid'
     });
-    let output = tf.layers.dense({
-      units: OUTPUTS,
-      activation: 'softmax'
-    });
-    model.add(hidden);
-    model.add(output);
-    return model;
-  }
+    let hiddenlayers = [];
+    let totalHiddenLayer = 4;
+    let hiddenUnits = 225;
 
-  randomNormal(){
-    return {
-      input : tf.randomNormal([INPUTS, OUTPUTS]),
-      output: tf.randomNormal([OUTPUTS, INPUTS])
-    };
+    for(let i = 0; i < totalHiddenLayer; i++){
+      hiddenlayers.push(tf.layers.dense({
+        units: hiddenUnits,
+        activation: 'relu'
+      }));
+    }
+
+    let outputLayer = tf.layers.dense({
+      units: OUTPUTS,
+      activation: 'sigmoid'
+    });
+
+    model.add(inputlayer);
+    hiddenlayers.forEach(layer => model.add(layer));
+    model.add(outputLayer);
+    return model;
   }
 
   copy() {

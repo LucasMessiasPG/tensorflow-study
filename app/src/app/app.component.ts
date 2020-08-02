@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import Game from "./workbranch/game";
 import Player from "./workbranch/player";
 import { random } from "mathjs";
+import * as randomLib from "random";
 
 const api = "http://localhost:8081";
 @Component({
@@ -28,7 +29,7 @@ export class AppComponent {
   maxWeigth: number = 1;
   totalPlayers: number = 100;
 
-  constructor(private http: HttpClient){
+  constructor(){
     this.setupGame();
   }
 
@@ -73,6 +74,7 @@ export class AppComponent {
     let objetive = this.game.objetivePlayer;
     let playersScore = [];
     if(this.players1.some(p => p.win)){
+      this.positionIndex++;
       playersScore = this.players1.filter(p => p.win).map(p => {
         return {
           win: true,
@@ -90,17 +92,21 @@ export class AppComponent {
     //   ]
     // } 
     else {
-      playersScore = this.players1.map(p => {
-        let diffx = Math.pow((p.position[0] - p.objetive[0]),2);
-        let diffy = Math.pow((p.position[1] - p.objetive[1]), 2);
-        console.log(Math.sqrt(diffx + diffy))
-        console.log("player", p.position)
-        console.log("objetive", p.objetive)
-        return {
-          player: p,
-          score: Math.sqrt(diffx + diffy) 
+      playersScore = [
+        {
+          player: bestOldPlayer,
+          score: 1
         }
-      });
+      ];
+      // playersScore = this.players1.map(p => {
+      //   let diffx = Math.pow((p.position[0] - p.objetive[0]),2);
+      //   let diffy = Math.pow((p.position[1] - p.objetive[1]), 2);
+      //   console.log(Math.sqrt(diffx + diffy))
+      //   return {
+      //     player: p,
+      //     score: Math.sqrt(diffx + diffy) 
+      //   }
+      // });
     }
 
     playersScore.sort((a, b) => {
@@ -108,7 +114,6 @@ export class AppComponent {
     });
 
     playersScore.length = 3;
-    console.log(playersScore[0].player.position);
     this.bestPlayer = playersScore[0].player;
     this.runGame(this.bestPlayer);
   }
@@ -126,16 +131,34 @@ export class AppComponent {
     this.debug = !this.debug;
   }
 
+  bluePositions = [
+    [0,0],
+    [14,14],
+    [14,0],
+    [0,14],
+    "random"
+  ]
+  positionIndex = 0;
+
   runGame(bestPlayer?){
     this.game.resetGame()
     console.clear = () => {}
-    this.player2 = new Player("blue", [ this.row, this.col ])
-    // this.game.setObjetive(player2, Math.round(Math.random() * (this.row -1)), Math.round(Math.random() * (this.col -1)));
-    let row = 14;
+    let _bluePositions = this.bluePositions[this.positionIndex < 4 ? this.positionIndex : 4];
+    if(_bluePositions == "random"){
+      _bluePositions = [
+        Math.round(randomLib.uniform(0, 14)()),
+        Math.round(randomLib.uniform(0, 14)())
+      ];
+    }
+    console.log("blue position", _bluePositions);
+    // @ts-ignore
+    this.player2 = new Player("blue", _bluePositions)
+    
+    let row = _bluePositions[0];
     if(typeof this.nextObjetive[0] != "undefined"){
       row = this.nextObjetive[0];
     }
-    let col = 14;
+    let col = _bluePositions[1];
     if(typeof this.nextObjetive[1] != "undefined"){
       col = this.nextObjetive[1];
     }

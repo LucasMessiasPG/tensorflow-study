@@ -2,6 +2,7 @@ import NeuralNetwork from "./nn";
 import { v1 as uuidV1 } from "uuid";
 import { random } from "mathjs";
 import _ from "lodash";
+import * as randomLib from "random";
 
 
 function randomG(v){ 
@@ -47,8 +48,8 @@ export default class Player{
   iAmObjetive: boolean = false;
   mutationRate: number = 0.1
   debug: any = false;  
-  maxWeigth = -Infinity;
-  minWeigth = Infinity;
+  maxWeigth = 1;
+  minWeigth = -1;
   oldBestPlayer = false;
 
   constructor(color: string, _mapSize: [number, number]){
@@ -86,12 +87,7 @@ export default class Player{
   mutation(){
     this.brain.mutate((value: any) => {
       if(this.mutationRate != 0 && random(0, 1) <= this.mutationRate){
-        let _value =  value + random(this.minWeigth * 2, this.maxWeigth * 2);
-        // if(this.debug){
-        //   console.log(">", value);
-        //   console.log(">>", _value);
-        //   console.log(">>>", this.maxWeigth, this.minWeigth);
-        // }
+        let _value =  value + randomLib.uniform(this.minWeigth, this.maxWeigth)();
         return _value;
       } else {
         return value;
