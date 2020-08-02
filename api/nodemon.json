@@ -1,8 +1,0 @@
-
-{
-  "watch": ["src"],
-  "execMap": {
-    "ts": "node --inspect=0.0.0.0:9228 -r dotenv/config -r sucrase/register src/server.ts"
-  },
-  "ext": "ts,js"
-}
