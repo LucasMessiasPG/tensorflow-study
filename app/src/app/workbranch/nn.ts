@@ -1,13 +1,14 @@
 import * as tf from "@tensorflow/tfjs";
 // @ts-ignore
 window.tf = tf;
-tf.setBackend('cpu');
+// tf.setBackend('cpu');
 
 const INPUTS = 8;
 const HIDDEN = 225;
 const OUTPUTS = 5;
 
 export default class NeuralNetwork{
+
   model: tf.Sequential;
   constructor(nn?: any){
     if(nn){
@@ -44,7 +45,12 @@ export default class NeuralNetwork{
     model.add(inputlayer);
     hiddenlayers.forEach(layer => model.add(layer));
     model.add(outputLayer);
+    model.compile({ optimizer: "adam", loss: tf.losses.sigmoidCrossEntropy, metrics: 'accuracy' })
     return model;
+  }
+
+  dispose() {
+    this.model.dispose();
   }
 
   copy() {

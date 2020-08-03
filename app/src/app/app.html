@@ -1,55 +1,48 @@
-<div class="map" *ngIf="game">
-  <button (click)="startGame()">Start</button>
-  <button (click)="stopGame()">Stop</button>
-  <button (click)="setupGame()">Reset</button>
-  <button (click)="debugPlayer()">Debug {{ debug }}</button>
-  <h1>round {{ game.round }} - time {{ game.time }}</h1>
-  <div>
-    <label for="minWeigth">
-    Min Weigth
-    <input type="text" name="minWeigth" [(ngModel)]="minWeigth">
-    </label>
-  </div>
-  <div>
-    <label for="maxWeigth">
-    Max Weigth
-    <input type="text" name="maxWeigth" [(ngModel)]="maxWeigth">
-    </label>
-  </div>
-  <div>
-    <label for="totalPlayers">
-      Total Players
-      <input type="range" name="totalPlayers" max="500" min="1" [(ngModel)]="totalPlayers"> {{ totalPlayers }}
-    </label>
-  </div>
-  <div>
-    <label for="gameSpeed">
-      Game Speed
-      <input type="range" name="gameSpeed" max="1000" min="3" [(ngModel)]="game.speed"> {{ game.speed }}
-    </label>
-  </div>
-  <div>
-    <label for="timeout">
-      Game timeout
-      <input type="range" name="timeout" max="50" min="10" [(ngModel)]="game.timeout"> {{ game.timeout }}
-    </label>
-  </div>
-
-  <div>
-    <label for="MutationRate">
-      Mutation Rate
-      <input type="range" name="mutationRate" [(ngModel)]="mutationRate"> {{ mutationRate / 100 }}
-    </label>
-  </div>
-  <div class="row" *ngFor="let row of game.map; let indexRow = index">
-    <div class="column"*ngFor="let tile of row; let indexCol = index">
-      <div class="tile" [ngClass]="{'oldBestplayer': tile.oldBestPlayer}" style="cursor: pointer;" (click)="setObjetive(indexRow, indexCol)">
-        <div class="player" [ngStyle]="{'background-color': tile.players[0].color}" *ngIf="tile.players.length" style="color: white; font-weight: bold; text-align: center;"> {{ tile.players.length }} </div>
+<div class="container" *ngIf="game">
+  <div class="row">
+    <div class="col-lg-12">
+      <button style="margin: 10px;" class="btn btn-success" (click)="startGame()">Start</button>
+      <button style="margin: 10px;" class="btn btn-danger" (click)="stopGame()">Stop</button>
+      <button style="margin: 10px;" class="btn btn-warning" (click)="setupGame()">Reset</button>
+    </div>
+    <div class="col-lg-12">
+      <div>
+        <label for="totalPlayers">
+          Total Players
+          <input type="range" name="totalPlayers" max="500" min="1" [(ngModel)]="totalPlayers"> {{ totalPlayers }}
+        </label>
+      </div>
+      <div>
+        <label for="gameSpeed">
+          Game Speed
+          <input type="range" name="gameSpeed" max="1000" min="3" [(ngModel)]="game.speed"> {{ game.speed }}
+        </label>
+      </div>
+      <div>
+        <label for="timeout">
+          Game timeout
+          <input type="range" name="timeout" max="50" min="10" [(ngModel)]="game.timeout"> {{ game.timeout }}
+        </label>
+      </div>
+    
+      <div class="form-group">
+        <label for="MutationRate">Mutation Rate</label>
+        <input class="form-control" type="range" name="mutationRate" min="0" max="1" step="0.01" [(ngModel)]="game.mutationRate">
+        <span>{{ game.mutationRate }}</span>
       </div>
     </div>
-  </div>
-  <p>{{ mutation }}</p>
-  <div *ngFor="let p of players1; let index = index">
-    {{ index }} - {{ p.mutationRate }}
+    <div class="col-lg-12">
+      <p>GEN: {{ game.round }}</p>
+      <p>Time: {{ game.time }}</p>
+    </div>
+    <div class="col-lg-12">
+      <div class="row" *ngFor="let row of game.map; let indexRow = index">
+        <div class="column"*ngFor="let tile of row; let indexCol = index">
+          <div class="tile" [ngClass]="{'oldBestplayer': tile.oldBestPlayer}" style="cursor: pointer;" (click)="setObjetive(indexRow, indexCol)">
+            <div class="player" [ngStyle]="{'background-color': tile.players[0].color}" *ngIf="tile.players.length" style="color: white; font-weight: bold; text-align: center;"> {{ tile.players.length }} </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

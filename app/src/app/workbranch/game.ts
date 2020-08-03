@@ -3,7 +3,7 @@ import Player from "./player";
 
 export default class Game{
   map: { oldBestPlayer: boolean, players: Player[]; }[][];
-  mapPlayers: { player: Player, x: number, y: number }[] = [];
+  mapPlayers: Player[] = [];
   status = "waiting";
   end = false;
   time: number = 0;
@@ -11,8 +11,8 @@ export default class Game{
   interval: any;
   timeout: number = 20;
   speed = 200;
-  objetivePlayer: Player;
-  safeStop: number = 100;
+  objetive: Player;
+  mutationRate = 0.1;
 
   constructor(private designMap: number[][]){
     this.resetGame();
@@ -21,7 +21,6 @@ export default class Game{
   resetGame(){
     this.time = 0;
     this.round++;
-    if(this.round > this.safeStop) return this.stop();
     this.mapPlayers = [];
     this.map = this.designMap.map((row: number[], indexRow: number) => {
       return row.map((column: number, indexColumn: number) => {
@@ -40,61 +39,95 @@ export default class Game{
     this.resetGame();
   }
 
-  setObjetive(player: Player, x: number, y: number){
+  setObjetive(player: Player){
     player.iAmObjetive = true;
-    this.mapPlayers.forEach(item => item.player.setObjetive(x, y));
-    this.objetivePlayer = player;
-    this.newPlayer(player, x, y);
+    this.mapPlayers.forEach(_player => _player.setObjetive(player.row, player.col));
+    this.objetive = player;
   }
 
-  getAdjacentsTiles(row, col){
+  getAdjacentsTiles([row , col]){
     let adjacent = [
-      _.get(this.map,`${--row}.${col}`, 0),
-      _.get(this.map,`${++row}.${col}`, 0),
-      _.get(this.map,`${row}.${--col}`, 0),
-      _.get(this.map,`${row}.${++col}`, 0),
+      _.has(this.map,`${row - 1}.${col}`, false),
+      _.has(this.map,`${row + 1}.${col}`, false),
+      _.has(this.map,`${row}.${col - 1}`, false),
+      _.has(this.map,`${row}.${col + 1}`, false),
     ]
     return adjacent.map(map => {
-      return map === 0 ? 0 : 1
+      return map ? 1 : 0
     })
   }
 
-  newPlayer(player: Player, x: number, y: number){
-    if(!this.map[y] || !this.map[y][x]) throw new Error(`out map ${x} - ${y}`);
-    if(!player.iAmObjetive){
-      player.setObjetive(this.objetivePlayer.position[0], this.objetivePlayer.position[1]);
+  getRowCol([ row, col ]){
+    if(this.positionOnMap([ row, col ]) === false){
+      throw new Error(`out map ${row} - ${col}`);
     }
-    this.mapPlayers.push({
-      player: player,
-      x: x,
-      y: y
-    })
-    player.movement = (keyPress) => this.movement(player, keyPress);
-    this.putPlayerOnMap(player, x, y)
+    return _.get(this.map, `${row}.${col}`)
   }
 
-  putPlayerOnMap(player: Player, x: number, y: number){
-    let { players } = this.map[y][x];
-    if(players.some(_player => _player.color != player.color)){
+  positionOnMap([ row, col ]){
+    return !!_.has(this.map, `${row}.${col}`);
+  }
+
+  newPlayer(player: Player, [ row, col ]){
+    if(this.positionOnMap([ row, col ]) === false){
+      throw new Error(`out map ${player.row} - ${player.col}`);
+    }
+
+    this.setPositionOnPlayer(player, [ row, col ]);
+    
+    if(!player.iAmObjetive && this.objetive){
+      player.setObjetive(this.objetive.row, this.objetive.col);
+    }
+
+    this.mapPlayers.push(player)
+
+    // implemente movemento for player
+    player.movement = (keyPress) => this.movement(player, keyPress);
+    this.putPlayerOnMap(player)
+  }
+
+  setPositionOnPlayer(player: Player, [ row, col ]){
+    player.position = [ row, col ];
+  }
+
+  hitOtherPlayer(players, player: Player){
+    return players.some(_player => _player.color != player.color);
+  }
+
+  putPlayerOnMap(player: Player){
+    let { players } = this.getRowCol(player.position);
+    
+    players.push(player);
+    _.set(this.map, `${player.row}.${player.col}`, { players });
+    this.checkWinLose(player);
+  }
+
+  checkWinLose(player: Player){
+    let { players } = this.getRowCol(player.position);
+    let hit = this.hitOtherPlayer(players, player);
+
+    if(hit){
       if(player.iAmObjetive){
         player.lose = true;
       } else {
-        this.objetivePlayer.lose = true;
         player.win = true;
+        this.objetive.lose = true;
         player.winTime = this.time;
       }
     }
-    player.stay(y,x);
-    players.push(player);
-    this.map[y][x].players = players;
   }
 
-  getAdjacents([row, col]){
+  getAdjacentsPlayers([row, col]){
+    let position1 = row - 1 >= 0 ? this.getRowCol([row - 1, col]) : [];
+    let position2 = row + 1 <= this.map.length ? this.getRowCol([row + 1, col]) : [];
+    let position3 = col - 1 >= 0 ? this.getRowCol([row, col - 1]) : [];
+    let position4 = col + 1 <= this.map[0].length ? this.getRowCol([row, col + 1]) : [];
+
     let adjacent = [
-      _.get(this.map,`${--row}.${col}.players`, []).length,
-      _.get(this.map,`${++row}.${col}.players`, []).length,
-      _.get(this.map,`${row}.${--col}.players`, []).length,
-      _.get(this.map,`${row}.${++col}.players`, []).length,
+      position1.length, // up
+      position2.length, // down
+      position3.length, // left
+      position4.length, // right
     ]
     return adjacent.map(_number => {
       return typeof _number != "undefined" ? _number : 0;
@@ -104,85 +137,66 @@ export default class Game{
   }
 
   setOldBestPlayerPosition([row, col]){
-    this.map[row][col].oldBestPlayer = true;
+    let tile = this.getRowCol([ row, col ]);
+    tile.oldBestPlayer = true;
+    _.set(this.map, `${row}.${col}`, tile);
   }
 
   movement(player: Player, keyPress: string){
-    let mapPlayer = this.mapPlayers.find(mapPlayer => mapPlayer.player == player);
-    if(!mapPlayer) return false;
-    // if(!mapPlayer) throw new Error("player not found on map players");
-    if(!this.map[mapPlayer.y] || !this.map[mapPlayer.y][mapPlayer.x]){
-      // player.lose = true;
+
+    let movement = {
+      "ArrowUp": { row: player.row - 1 },
+      "ArrowDown": { row: player.row + 1 },
+      "ArrowLeft": { col: player.col - 1 },
+      "ArrowRight": { col: player.col + 1 }
+    }
+    let { row, col } = movement[keyPress];
+
+    if(typeof row == "undefined") row = player.row;
+    if(typeof col == "undefined") col = player.col;
+    if(this.positionOnMap([row, col]) === false){
+      // try move out map !!!!
+      // lose ?
       return false;
     }
-    let movement = {
-      "ArrowUp": { y: mapPlayer.y - 1 },
-      "ArrowDown": { y: mapPlayer.y + 1 },
-      "ArrowLeft": { x: mapPlayer.x - 1 },
-      "ArrowRight": { x: mapPlayer.x + 1 }
-    }
-    let { x, y } = movement[keyPress];
-    let newPossition = {
-      x: mapPlayer.x,
-      y: mapPlayer.y
-    }
-    if(typeof  x != "undefined"){
-      newPossition.x = x;
-    }
-    if(typeof  y != "undefined"){
-      newPossition.y = y;
-    }
-    if(!this.map[newPossition.y] || !this.map[newPossition.y][newPossition.x]){
-      return false
-    };
-    
-    this.mapPlayers = this.mapPlayers.filter(mapPlayer => mapPlayer.player != player);
-    this.map[mapPlayer.y][mapPlayer.x].players = this.map[mapPlayer.y][mapPlayer.x].players.filter(_player => player != _player);
-    this.mapPlayers.push({ ...mapPlayer, ...newPossition });
-    this.putPlayerOnMap(mapPlayer.player, newPossition.x, newPossition.y);
+    this.updateMapPositionPlayer(player, [ row, col ]);
   }
 
-  draw(){
-    let emptyTile = "______";
-    let gameScreen = [];
-    gameScreen.push(`rows ${this.map.length} columns ${this.map[0].length}`)
-    for(let row of this.map){
-      let columnsDraw = [];
-      for(let column of row){
-        let players = column.players;
-        let columnText = "";
+  updateMapPositionPlayer(player: Player, [ row, col ]){
+    let tile = this.getRowCol(player.position);
+    
+    tile.players = tile.players.filter(_player => _player != player);
+    _.set(this.map, `${player.row}.${player.col}`, tile);
+    
+    this.mapPlayers = this.mapPlayers.filter(_player => _player != player);
 
-        if(players.length){
-          columnText = `${players.length}-${players[0].color}`;
-        }
-        
-        let line = (columnText +  emptyTile).slice(0, emptyTile.length)
-        columnsDraw.push(line);
-      }
-      gameScreen.push(columnsDraw.join(" | "));
-    }
-    console.log(gameScreen.join("\r\n"));
+    this.setPositionOnPlayer(player, [ row, col ]);
+    
+    this.mapPlayers.push(player);
+    this.putPlayerOnMap(player);
   }
 
   start(frameUpdate: Function, endFn: Function){
-    console.clear();
     let speed = this.speed;
     this.interval = setInterval(() => {
       if(speed != this.speed){
         clearInterval(this.interval);
         return this.start(frameUpdate, endFn);
       }
-      this.time++
-      console.clear();
-      frameUpdate();
-      if(this.time > this.timeout){
-        this.gameOver("timeout");
-        return endFn();
-      }
+      this.nextStep(frameUpdate, endFn);
     }, speed);
   }
 
   stop(){
     if(this.interval) clearInterval(this.interval);
+  }
+
+  nextStep(frameUpdate: Function, endFn: Function){
+    this.time++
+    frameUpdate();
+    if(this.time > this.timeout){
+      this.gameOver("timeout");
+      return endFn();
+    }
   }
 }

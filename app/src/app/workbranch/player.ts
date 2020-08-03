@@ -52,17 +52,38 @@ export default class Player{
   minWeigth = -1;
   oldBestPlayer = false;
 
-  constructor(color: string, _mapSize: [number, number]){
+  constructor(color: string){
     this.color = color;
-    this.mapSize = _mapSize;
   }
 
-  makeBrain(brain: NeuralNetwork){
+  setMapSize(mapSize: [number, number]){
+    this.mapSize = mapSize;
+  }
+
+  get row(){
+    return this.position[0];
+  }
+  
+  set row(value){
+    this.position[0] = value;
+  }
+
+  get col(){
+    return this.position[1];
+  }
+  
+  set col(value){
+    this.position[1] = value;
+  }
+
+  makeBrain(brain?: NeuralNetwork, opt?: any){
+    let { ignroeMutation = false } = opt || {};
     if(brain){
       // @ts-ignore
       this.brain = brain.copy();
-
-      this.mutation();
+      if(!ignroeMutation){
+        this.mutation();
+      }
     } else {
       this.brain = new NeuralNetwork();
     }
@@ -74,10 +95,6 @@ export default class Player{
 
   movement(keyPress: string){
     throw new Error("not implemented");
-  }
-
-  stay(row: number, column: number){
-    this.position = [row, column];
   }
   
   setMutation(mutation: number){
@@ -96,9 +113,14 @@ export default class Player{
     if(this.debug) this.debug = false;
   }
 
+  fullCopy(){
+    return this.copy({ ignroeMutation: true });
+  }
+
   copy(opt?: any): Player{
-    let {  mutationRate, debug, minWeigth, maxWeigth } = opt || {};
-    let player = new Player(this.color, this.mapSize);
+    let {  mutationRate, debug, minWeigth, maxWeigth, ignroeMutation } = opt || {};
+    let player = new Player(this.color);
+    player.setMapSize(this.mapSize);
     player.mutationRate = mutationRate;
     player.debug = debug;
     
@@ -109,7 +131,7 @@ export default class Player{
     if(typeof maxWeigth != "undefined"){
       player.maxWeigth = maxWeigth;
     }
-    player.makeBrain(this.brain);
+    player.makeBrain(this.brain, { ignroeMutation });
     return player
   }
 
@@ -122,54 +144,8 @@ export default class Player{
     ]
     return movement[Math.round(Math.random() * 3)];
   }
-  predictRunner(adjacents){
-    console.log(adjacents);
-    /*
-     ___ ___ ___ ___ ___
-    |___|___|___|___|___|
-    |___|___|___|___|___|
-    |___|___|_o_|___|___|
-    |___|_o_|_>_|_o_|___|
-    |___|___|_o_|___|___|
-    |___|___|___|___|___|
-    |___|___|___|___|___|
-
-    > player
-    o seeing tiles
-
-    */
-
-   let inputs = [];
-
-   inputs[0] = adjacents[0];
-   inputs[1] = adjacents[1];
-   inputs[2] = adjacents[2];
-   inputs[3] = adjacents[3];
-   inputs[4] = 0;
-
-   let action = this.brain.predict(inputs);
-   let max = -Infinity;
-   action.forEach(moveValue => {
-     if(moveValue > max){
-       max = moveValue;
-     }
-   })
-   
-   let indexArr = action.indexOf(max);
-
-   let movement = [
-    "ArrowUp",
-    "ArrowDown",
-    "ArrowLeft",
-    "ArrowRight"
-  ]
-
-   return movement[indexArr];
-  }
-
 
   predictMovement(adjacent){
-
     let inputs = [];
 
     let [ y, x ] = this.position;
@@ -212,11 +188,10 @@ export default class Player{
       "ArrowRight"
     ]
 
-    if(max == 4){
+    let indexArr = action.indexOf(max);
+    if(indexArr == 4){
       return "";
     }
-
-    let indexArr = action.indexOf(max);
     return movement[indexArr];
   }
 

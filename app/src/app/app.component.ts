@@ -1,8 +1,7 @@
 import { Component, HostListener } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import Game from "./workbranch/game";
 import Player from "./workbranch/player";
-import { random } from "mathjs";
+import _ from "lodash";
 import * as randomLib from "random";
 
 const api = "http://localhost:8081";
@@ -13,14 +12,11 @@ const api = "http://localhost:8081";
 })
 export class AppComponent {
   title = 'app';
-  game: any;
-  players1: Player[];
+  game: Game;
+  players1: Player[] = [];
   bestPlayer: any;
   row: number;
   col: number;
-  mutation: number = 0.1;
-  mutationRate = 1;
-  mutationValue = -1;
   player2: any;
   nextObjetive: number[] = [];
   playerDebug: any;
@@ -29,20 +25,19 @@ export class AppComponent {
   maxWeigth: number = 1;
   totalPlayers: number = 100;
 
+  bluePositions: number[][] = [
+    [0,0],
+    [14,14],
+    [14,0],
+    [0,14],
+    [-1,-1]
+  ]
+  positionIndex = 0;
+  oldPositionIndex = 0;
+  oldPosition: any = [];
+
   constructor(){
     this.setupGame();
-  }
-
-
-  // @HostListener("window:keydown")
-
-  mutationChange(status){
-    if(status == "+"){
-      this.mutation += 0.01;
-    } else {
-      this.mutation -= 0.01;
-    }
-    if(this.mutation < 0) this.mutation = 0;
   }
 
   setupGame(){
@@ -66,56 +61,73 @@ export class AppComponent {
   }
 
   startGame(){
-    this.runGame(this.bestPlayer || new Player("red", [ this.row, this.col ]));
+    let initialPlayer: Player = this.bestPlayer;
+    if(!initialPlayer){
+      initialPlayer = this.createPlayer("red");
+    }
+    this.runGame(initialPlayer);
+  }
+
+  nextPositionPlayer2(){
+    this.positionIndex++;
   }
 
   endGame(bestOldPlayer){
     this.game.stop();
-    let objetive = this.game.objetivePlayer;
     let playersScore = [];
-    if(this.players1.some(p => p.win)){
-      this.positionIndex++;
-      playersScore = this.players1.filter(p => p.win).map(p => {
+
+    if(this.hasWinner()){
+      this.nextPositionPlayer2()
+      playersScore = this.players1.map(p => {
         return {
           win: true,
           player: p,
           score: p.winTime
         }
       });
-    } 
-    // else if( this.game.round > 500) {
-    //   playersScore = [
-    //     {
-    //       player: bestOldPlayer,
-    //       score: 1
-    //     }
-    //   ]
-    // } 
-    else {
-      playersScore = [
-        {
-          player: bestOldPlayer,
-          score: 1
-        }
-      ];
-      // playersScore = this.players1.map(p => {
-      //   let diffx = Math.pow((p.position[0] - p.objetive[0]),2);
-      //   let diffy = Math.pow((p.position[1] - p.objetive[1]), 2);
-      //   console.log(Math.sqrt(diffx + diffy))
-      //   return {
-      //     player: p,
-      //     score: Math.sqrt(diffx + diffy) 
-      //   }
-      // });
+    } else {
+      playersScore = [{
+        player: bestOldPlayer,
+        score: 1
+      }];
     }
 
     playersScore.sort((a, b) => {
       return a.score - b.score;
     });
 
-    playersScore.length = 3;
-    this.bestPlayer = playersScore[0].player;
+    this.bestPlayer = _.first(playersScore).player.fullCopy();
+    this.clearListPlayer1();
     this.runGame(this.bestPlayer);
+  }
+
+  hasWinner(){
+    return this.players1.some(player1 => player1.win);
+  }
+
+  createPlayer(color: string){
+    let player = new Player(color);
+    player.setMapSize([this.game.map.length, this.game.map[0].length]);
+    player.mutationRate = this.game.mutationRate
+    player.makeBrain();
+    return player;
+  }
+
+  createListPlayer1(playerToCopy: Player){
+    let listPlayers = [];
+    for(let i = 0; i < this.totalPlayers; i++){
+      listPlayers.push(this.createPlayer(playerToCopy.color));
+    }
+    playerToCopy.brain.dispose();
+    this.players1 = listPlayers;
+    return this.players1
+  }
+
+  clearListPlayer1(){
+    if(this.players1 && this.players1.length){
+      this.players1.forEach(player1 => player1.brain.dispose());
+    }
+    this.players1 = [];
   }
 
 
@@ -131,62 +143,69 @@ export class AppComponent {
     this.debug = !this.debug;
   }
 
-  bluePositions = [
-    [0,0],
-    [14,14],
-    [14,0],
-    [0,14],
-    "random"
-  ]
-  positionIndex = 0;
+  getRandomPosition(){
+    return Math.round(randomLib.uniform(0, (this.game.map.length -1))());
+  }
 
-  runGame(bestPlayer?){
-    this.game.resetGame()
-    console.clear = () => {}
-    let _bluePositions = this.bluePositions[this.positionIndex < 4 ? this.positionIndex : 4];
-    if(_bluePositions == "random"){
-      _bluePositions = [
-        Math.round(randomLib.uniform(0, 14)()),
-        Math.round(randomLib.uniform(0, 14)())
-      ];
+  getNextPositionPlayer2(): [number, number]{
+    let player2Position: [number, number] = this.bluePositions[this.positionIndex < 4 ? this.positionIndex : 4] as [number, number];
+
+    // random mode
+    if(player2Position[0] == -1 && player2Position[1] == -1){
+      player2Position = null;
+      if(this.positionIndex != this.oldPositionIndex){
+        this.oldPositionIndex = this.positionIndex;
+        player2Position = [
+          this.getRandomPosition(),
+          this.getRandomPosition()
+        ];
+      }
     }
-    console.log("blue position", _bluePositions);
-    // @ts-ignore
-    this.player2 = new Player("blue", _bluePositions)
-    
-    let row = _bluePositions[0];
+    if(!player2Position){
+      player2Position = this.oldPosition;
+    }
+
     if(typeof this.nextObjetive[0] != "undefined"){
-      row = this.nextObjetive[0];
+      player2Position[0] = this.nextObjetive[0];
     }
-    let col = _bluePositions[1];
     if(typeof this.nextObjetive[1] != "undefined"){
-      col = this.nextObjetive[1];
+      player2Position[1] = this.nextObjetive[1];
     }
-    this.game.setObjetive(this.player2, row, col);
-    this.game.safeStop = 3000;
+
+    this.oldPosition = player2Position;
+    return player2Position;
+  }
+
+  createPlayer2(){
+    if(this.player2) this.player2.brain.dispose();
+    this.player2 = this.createPlayer("blue")
+    return this.player2;
+  }
+
+  runGame(bestPlayer?: Player){
+    this.game.resetGame()
+
+    let player2 = this.createPlayer2();
+    let player2Position = this.getNextPositionPlayer2();
+    this.game.newPlayer(player2, player2Position);
+    this.game.setObjetive(player2);
+
     if(bestPlayer.position){
       this.game.setOldBestPlayerPosition(bestPlayer.position);
     }
-    this.players1 = [];
-    let position = [Math.round(Math.random() * (this.row -1)), Math.round(Math.random() * (this.col -1))]; 
-    for(let i = 0; i < this.totalPlayers; i++){
-      let player1 = bestPlayer.copy({
-        mutationRate: this.mutationRate / 100,
-        debug: this.debug,
-        minWeigth: this.minWeigth,
-        maxWeigth: this.maxWeigth,
-      });
-      this.players1.push(player1);
-      this.game.newPlayer(player1, 7, 7);
+    let players1 = this.createListPlayer1(bestPlayer.fullCopy());
+    for(let player1 of players1){
+      this.game.newPlayer(player1, [ 7, 7]);
     }
+
     this.game.start(() => {
       // frame (1 second)
       for(let player of this.players1){
         if(player.win){
-          this.endGame(bestPlayer);
+          this.endGame(player);
           break;
         }
-        let keyPress = player.predictMovement(this.game.getAdjacentsTiles(player.position[0], player.position[1]));
+        let keyPress = player.predictMovement(this.game.getAdjacentsTiles(player.position));
         if(keyPress){
           player.movement(keyPress);
         }
@@ -196,8 +215,11 @@ export class AppComponent {
         // let keyPress = player2.predictRunner(this.game.getAdjacents(player2.position));
         // player2.movement(player2.randomMoment());
       }
-      let bkpPlayer = this.players1[0];
-      this.players1 = this.players1.filter(player => player.lose === false);
+      let bkpPlayer = this.players1[0].fullCopy();
+      this.players1 = this.players1.filter(player => {
+        return  player.lose === false
+      });
+
       if(!this.players1.length){
         this.players1.push(bkpPlayer);
         return this.endGame(bestPlayer);
