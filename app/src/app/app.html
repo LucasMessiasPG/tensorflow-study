@@ -4,6 +4,8 @@
       <button style="margin: 10px;" class="btn btn-success" (click)="startGame()">Start</button>
       <button style="margin: 10px;" class="btn btn-danger" (click)="stopGame()">Stop</button>
       <button style="margin: 10px;" class="btn btn-warning" (click)="setupGame()">Reset</button>
+      <button style="margin: 10px;" class="btn btn-info" (click)="startTrain()">Train</button>
+      <button style="margin: 10px;" class="btn btn-info" (click)="stopTrain()">Train (stop)</button>
     </div>
     <div class="col-lg-12">
       <div>
@@ -25,9 +27,9 @@
         </label>
       </div>
     
-      <div class="form-group">
+      <div >
         <label for="MutationRate">Mutation Rate</label>
-        <input class="form-control" type="range" name="mutationRate" min="0" max="1" step="0.01" [(ngModel)]="game.mutationRate">
+        <input  type="range" name="mutationRate" min="0" max="1" step="0.01" [(ngModel)]="game.mutationRate">
         <span>{{ game.mutationRate }}</span>
       </div>
     </div>
@@ -39,7 +41,7 @@
       <div class="row" *ngFor="let row of game.map; let indexRow = index">
         <div class="column"*ngFor="let tile of row; let indexCol = index">
           <div class="tile" [ngClass]="{'oldBestplayer': tile.oldBestPlayer}" style="cursor: pointer;" (click)="setObjetive(indexRow, indexCol)">
-            <div class="player" [ngStyle]="{'background-color': tile.players[0].color}" *ngIf="tile.players.length" style="color: white; font-weight: bold; text-align: center;"> {{ tile.players.length }} </div>
+            <div class="player" [ngStyle]="{'background-color': tile.players[0].color}" *ngIf="tile.players.length" > {{ tile.players.length }} </div>
           </div>
         </div>
       </div>

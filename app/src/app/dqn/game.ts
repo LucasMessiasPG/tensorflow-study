@@ -1,5 +1,6 @@
 import _ from "lodash";
 import Player from "./player";
+import random from "random";
 
 export default class Game{
   map: { oldBestPlayer: boolean, players: Player[]; }[][];
@@ -13,8 +14,16 @@ export default class Game{
   speed = 100;
   objetive: Player;
   mutationRate = 0.1;
+  designMap: any[];
 
-  constructor(private designMap: number[][]){
+  constructor(size: number){
+    this.designMap = [];
+    for(let i = 0; i < size; ++i){
+      this.designMap[i] = [];
+      for(let j = 0; j < size; ++j){
+        this.designMap[i][j] = 1; 
+      } 
+    }
     this.resetGame();
   }
 
@@ -32,6 +41,16 @@ export default class Game{
     })
   }
 
+  getRandomPosition(): [number, number]{
+    let max = this.map.length;
+    let min = 0
+    let fnRandom = random.uniform(max, min);
+    return [
+      Math.floor(fnRandom()),
+      Math.floor(fnRandom())
+    ];
+  }
+
   gameOver(status: string){
     this.stop();
     this.status = status;
@@ -41,16 +60,16 @@ export default class Game{
 
   setObjetive(player: Player){
     player.iAmObjetive = true;
-    this.mapPlayers.forEach(_player => _player.setObjetive(player.row, player.col));
+    this.mapPlayers.forEach(_player => _player.setObjetive(player.position));
     this.objetive = player;
   }
 
   getAdjacentsTiles([row , col]){
     let adjacent = [
-      _.has(this.map,`${row - 1}.${col}`, false),
-      _.has(this.map,`${row + 1}.${col}`, false),
-      _.has(this.map,`${row}.${col - 1}`, false),
-      _.has(this.map,`${row}.${col + 1}`, false),
+      _.has(this.map,`${row - 1}.${col}`),
+      _.has(this.map,`${row + 1}.${col}`),
+      _.has(this.map,`${row}.${col - 1}`),
+      _.has(this.map,`${row}.${col + 1}`),
     ]
     return adjacent.map(map => {
       return map ? 1 : 0
@@ -76,7 +95,7 @@ export default class Game{
     this.setPositionOnPlayer(player, [ row, col ]);
     
     if(!player.iAmObjetive && this.objetive){
-      player.setObjetive(this.objetive.row, this.objetive.col);
+      player.setObjetive(this.objetive.position);
     }
 
     this.mapPlayers.push(player)
@@ -99,22 +118,25 @@ export default class Game{
     
     players.push(player);
     _.set(this.map, `${player.row}.${player.col}`, { players });
-    this.checkWinLose(player);
   }
 
   checkWinLose(player: Player){
     let { players } = this.getRowCol(player.position);
     let hit = this.hitOtherPlayer(players, player);
-
+    const LOSE_REWARD = -10;
+    const WIN_REWARD = 10;
+    let reward = -0.2;
     if(hit){
       if(player.iAmObjetive){
+        reward = LOSE_REWARD;
         player.lose = true;
       } else {
         player.win = true;
+        reward = WIN_REWARD
         this.objetive.lose = true;
-        player.winTime = this.time;
       }
     }
+    return reward;
   }
 
   getAdjacentsPlayers([row, col]){
@@ -144,6 +166,8 @@ export default class Game{
 
   movement(player: Player, keyPress: string){
 
+    let old_postion: [number, number] = player.position.slice() as [number, number];
+
     let movement = {
       "ArrowUp": { row: player.row - 1 },
       "ArrowDown": { row: player.row + 1 },
@@ -160,6 +184,13 @@ export default class Game{
       return false;
     }
     this.updateMapPositionPlayer(player, [ row, col ]);
+    
+    let reward = this.checkWinLose(player);
+    let { done } = player.feedbackMoviment(keyPress, reward, old_postion);
+    if(process.env.DRAW){
+      this.draw();
+    }
+    return done;
   }
 
   updateMapPositionPlayer(player: Player, [ row, col ]){
@@ -199,4 +230,48 @@ export default class Game{
       return endFn();
     }
   }
+
+  draw(){
+
+    function clearConsoleAndScrollbackBuffer() {
+      // @ts-ignore
+      process.stdout.write("\u001b[3J\u001b[2J\u001b[1J");console.clear();
+    }
+    clearConsoleAndScrollbackBuffer()
+    let mapPrint = [];
+    let rowPrint = [" "];
+    for(let row of this.map){
+      rowPrint.push("_")
+    }
+    rowPrint.push(" ");
+    mapPrint.push(rowPrint.join(" "));
+    let player1: Player;
+    for(let row of this.map){
+      let rowPrint = [" "];
+      for(let col of row){
+        let { players } = col;
+        if(players.length == 0){
+          rowPrint.push("_")
+          continue;
+        }
+        let color = players[0].color;
+        if(color == "red"){
+          player1 = players[0];
+        }
+        rowPrint.push(color.slice(0,1))
+
+      }
+      rowPrint.push(" ")
+      mapPrint.push(rowPrint.join("|"))
+    }
+    // console.log(mapPrint);
+    console.log(mapPrint.join("\r\n"));
+    if(player1){
+      console.log(`id: ${player1.id}`);
+      console.log(`win:`, player1.win);
+      console.log(`frameCount: ${player1.frameCount}`)
+      console.log(`cumulativeReward: ${player1.cumulativeReward}`)
+    }
+  }
+  
 }

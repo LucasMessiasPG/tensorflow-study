@@ -4,7 +4,7 @@ window.tf = tf;
 // tf.setBackend('cpu');
 
 const INPUTS = 8;
-const HIDDEN = 225;
+const HIDDEN = 32;
 const OUTPUTS = 5;
 
 export default class NeuralNetwork{
@@ -26,6 +26,7 @@ export default class NeuralNetwork{
       units: HIDDEN,
       activation: 'sigmoid'
     });
+    
     let hiddenlayers = [];
     let totalHiddenLayer = 4;
     let hiddenUnits = 225;

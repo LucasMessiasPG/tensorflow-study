@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --host 0.0.0.0 --port 8089 --disableHostCheck",
+    "start": "ng serve --host 0.0.0.0 --port 8088 --disableHostCheck",
     "build": "ng build",
     "test": "ng test",
     "lint": "ng lint",
@@ -24,6 +24,7 @@
     "mathjs": "^7.1.0",
     "random": "^2.2.0",
     "rxjs": "~6.5.5",
+    "sucrase": "^3.15.0",
     "tslib": "^2.0.0",
     "zone.js": "~0.10.3"
   },
@@ -31,7 +32,9 @@
     "@angular-devkit/build-angular": "~0.1000.3",
     "@angular/cli": "~10.0.3",
     "@angular/compiler-cli": "~10.0.4",
-    "@types/node": "^12.11.1",
+    "@types/lodash": "^4.14.158",
+    "@types/node": "^14.0.27",
+    "@types/random": "^2.1.1",
     "ts-node": "~8.3.0",
     "tslint": "~6.1.0",
     "typescript": "~3.9.5"

@@ -102,7 +102,9 @@ export default class Player{
   }
 
   mutation(){
+    // dqn deep com reforco
     this.brain.mutate((value: any) => {
+      console.log(this.mutationRate);
       if(this.mutationRate != 0 && random(0, 1) <= this.mutationRate){
         let _value =  value + randomLib.uniform(this.minWeigth, this.maxWeigth)();
         return _value;
