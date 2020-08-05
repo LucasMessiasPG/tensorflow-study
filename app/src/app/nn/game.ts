@@ -8,8 +8,6 @@ export default class GameDQN extends Game{
   }
 
   movement(player: Player, keyPress: string){
-    let old_postion: [number, number] = player.position.slice() as [number, number];
-
     let movement = {
       "ArrowUp": { row: player.row - 1 },
       "ArrowDown": { row: player.row + 1 },
@@ -25,24 +23,8 @@ export default class GameDQN extends Game{
       // lose ?
       return false;
     }
-    this.updateMapPositionPlayer(player, [ row, col ]);
     
-    let reward = this.checkWinLose(player);
-    let { done } = player.feedbackMoviment(keyPress, reward, old_postion);
-    // @ts-ignore
-    if(process && process.env.DRAW){
-      this.draw();
-    }
-    return done;
+    this.updateMapPositionPlayer(player, [ row, col ]);
   }
 
-  drawPlayerStats(player1: Player){
-    if(player1){
-      console.log(`id: ${player1.id}`);
-      console.log(`win:`, player1.win);
-      console.log(`frameCount: ${player1.frameCount}`)
-      console.log(`cumulativeReward: ${player1.cumulativeReward}`)
-    }
-  }
 }
-

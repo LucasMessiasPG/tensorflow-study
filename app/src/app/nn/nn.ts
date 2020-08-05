@@ -3,9 +3,9 @@ import * as tf from "@tensorflow/tfjs";
 window.tf = tf;
 // tf.setBackend('cpu');
 
-const INPUTS = 8;
+const INPUTS = 4;
 const HIDDEN = 32;
-const OUTPUTS = 5;
+const OUTPUTS = 4;
 
 export default class NeuralNetwork{
 
@@ -26,17 +26,6 @@ export default class NeuralNetwork{
       units: HIDDEN,
       activation: 'sigmoid'
     });
-    
-    let hiddenlayers = [];
-    let totalHiddenLayer = 4;
-    let hiddenUnits = 225;
-
-    for(let i = 0; i < totalHiddenLayer; i++){
-      hiddenlayers.push(tf.layers.dense({
-        units: hiddenUnits,
-        activation: 'relu'
-      }));
-    }
 
     let outputLayer = tf.layers.dense({
       units: OUTPUTS,
@@ -44,7 +33,19 @@ export default class NeuralNetwork{
     });
 
     model.add(inputlayer);
-    hiddenlayers.forEach(layer => model.add(layer));
+
+    // let hiddenlayers = [];
+    // let totalHiddenLayer = 4;
+    // let hiddenUnits = 225;
+
+    // for(let i = 0; i < totalHiddenLayer; i++){
+    //   hiddenlayers.push(tf.layers.dense({
+    //     units: hiddenUnits,
+    //     activation: 'relu'
+    //   }));
+    // }
+
+    // hiddenlayers.forEach(layer => model.add(layer));
     model.add(outputLayer);
     model.compile({ optimizer: "adam", loss: tf.losses.sigmoidCrossEntropy, metrics: 'accuracy' })
     return model;
@@ -86,14 +87,10 @@ export default class NeuralNetwork{
   }
 
   predict(input_array) {
-    // console.log(input_array);
     return tf.tidy(() => {
-      let xs = tf.tensor([input_array]);
-      let ys = this.model.predict(xs);
-
-      // @ts-ignore
-      let y_values = ys.dataSync();
-      return y_values;
+      let xs = tf.tensor(input_array, [ 1, 4 ]);
+      let ys: any = this.model.predict(xs);
+      return ys.dataSync();
     });
   }
 }

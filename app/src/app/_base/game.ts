@@ -1,5 +1,6 @@
 import _ from "lodash";
 import Player from "./player";
+import random from "random";
 
 export default class Game{
   map: { oldBestPlayer: boolean, players: Player[]; }[][];
@@ -7,50 +8,94 @@ export default class Game{
   status = "waiting";
   end = false;
   time: number = 0;
-  round: number = 0;
+  generation: number = 0;
   interval: any;
   timeout: number = 20;
-  speed = 100;
+  speed = 500;
   objetive: Player;
   mutationRate = 0.1;
+  designMap: any[];
 
-  constructor(private designMap: number[][]){
-    this.resetGame();
+  constructor(public size: number){
+    this.reset();
   }
 
-  resetGame(){
+  start(frameUpdate: Function, endFn: Function){
+    let speed = this.speed;
+    this.status = "playing";
+    this.interval = setInterval(() => {
+      this.time++;
+      if(speed != this.speed){
+        clearInterval(this.interval);
+        return this.start(frameUpdate, endFn);
+      }
+      this.nextStep(frameUpdate, endFn);
+    }, speed);
+  }
+
+  stop(){
+    this.status = "stoped"
+    if(this.interval) clearInterval(this.interval);
+  }
+
+  reset(){
+    this.status = "waiting";
     this.time = 0;
-    this.round++;
+    this.generation == 0;
+    this.cleanUpMaps();
+  }
+
+  changeGen(){
+    this.generation++;
+    this.cleanUpMaps();
+  }
+
+  cleanUpMaps(){
     this.mapPlayers = [];
-    this.map = this.designMap.map((row: number[], indexRow: number) => {
-      return row.map((column: number, indexColumn: number) => {
-        return {
+    let rows = [];
+
+    for(let i = 0 ; i < this.size; ++i ){
+      let cols = [];
+      for(let j = 0 ; j < this.size; ++j ){
+        cols.push({
           players: [] as Player[],
           oldBestPlayer: false
-        };
-      })
-    })
+        });
+      }
+      rows.push(cols);
+    }
+
+    this.map = rows;
   }
 
-  gameOver(status: string){
+  getRandomPosition(): [number, number]{
+    let max = this.map.length;
+    let min = 0
+    let fnRandom = random.uniform(max, min);
+    return [
+      Math.floor(fnRandom()),
+      Math.floor(fnRandom())
+    ];
+  }
+
+  gameOver(){
     this.stop();
-    this.status = status;
+    this.status = "end";
     this.end = true;
-    this.resetGame();
   }
 
   setObjetive(player: Player){
     player.iAmObjetive = true;
-    this.mapPlayers.forEach(_player => _player.setObjetive(player.row, player.col));
+    this.mapPlayers.forEach(_player => _player.setObjetive(player.position));
     this.objetive = player;
   }
 
   getAdjacentsTiles([row , col]){
     let adjacent = [
-      _.has(this.map,`${row - 1}.${col}`, false),
-      _.has(this.map,`${row + 1}.${col}`, false),
-      _.has(this.map,`${row}.${col - 1}`, false),
-      _.has(this.map,`${row}.${col + 1}`, false),
+      _.has(this.map,`${row - 1}.${col}`),
+      _.has(this.map,`${row + 1}.${col}`),
+      _.has(this.map,`${row}.${col - 1}`),
+      _.has(this.map,`${row}.${col + 1}`),
     ]
     return adjacent.map(map => {
       return map ? 1 : 0
@@ -76,7 +121,7 @@ export default class Game{
     this.setPositionOnPlayer(player, [ row, col ]);
     
     if(!player.iAmObjetive && this.objetive){
-      player.setObjetive(this.objetive.row, this.objetive.col);
+      player.setObjetive(this.objetive.position);
     }
 
     this.mapPlayers.push(player)
@@ -99,22 +144,26 @@ export default class Game{
     
     players.push(player);
     _.set(this.map, `${player.row}.${player.col}`, { players });
-    this.checkWinLose(player);
   }
 
   checkWinLose(player: Player){
     let { players } = this.getRowCol(player.position);
     let hit = this.hitOtherPlayer(players, player);
-
+    
+    const LOSE_REWARD = -10;
+    const WIN_REWARD = 10;
+    let reward = -0.2;
     if(hit){
       if(player.iAmObjetive){
+        reward = LOSE_REWARD;
         player.lose = true;
       } else {
         player.win = true;
+        reward = WIN_REWARD
         this.objetive.lose = true;
-        player.winTime = this.time;
       }
     }
+    return reward;
   }
 
   getAdjacentsPlayers([row, col]){
@@ -142,25 +191,7 @@ export default class Game{
     _.set(this.map, `${row}.${col}`, tile);
   }
 
-  movement(player: Player, keyPress: string){
-
-    let movement = {
-      "ArrowUp": { row: player.row - 1 },
-      "ArrowDown": { row: player.row + 1 },
-      "ArrowLeft": { col: player.col - 1 },
-      "ArrowRight": { col: player.col + 1 }
-    }
-    let { row, col } = movement[keyPress];
-
-    if(typeof row == "undefined") row = player.row;
-    if(typeof col == "undefined") col = player.col;
-    if(this.positionOnMap([row, col]) === false){
-      // try move out map !!!!
-      // lose ?
-      return false;
-    }
-    this.updateMapPositionPlayer(player, [ row, col ]);
-  }
+  movement(player: Player, keyPress: string){ throw new Error("implement moviment rule on game"); }
 
   updateMapPositionPlayer(player: Player, [ row, col ]){
     let tile = this.getRowCol(player.position);
@@ -174,29 +205,61 @@ export default class Game{
     
     this.mapPlayers.push(player);
     this.putPlayerOnMap(player);
-  }
-
-  start(frameUpdate: Function, endFn: Function){
-    let speed = this.speed;
-    this.interval = setInterval(() => {
-      if(speed != this.speed){
-        clearInterval(this.interval);
-        return this.start(frameUpdate, endFn);
-      }
-      this.nextStep(frameUpdate, endFn);
-    }, speed);
-  }
-
-  stop(){
-    if(this.interval) clearInterval(this.interval);
+    this.checkWinLose(player);
   }
 
   nextStep(frameUpdate: Function, endFn: Function){
     this.time++
     frameUpdate();
     if(this.time > this.timeout){
-      this.gameOver("timeout");
+      this.gameOver();
       return endFn();
     }
   }
+
+  draw(){
+
+    function clearConsoleAndScrollbackBuffer() {
+      // @ts-ignore
+      process.stdout.write("\u001b[3J\u001b[2J\u001b[1J");console.clear();
+    }
+    clearConsoleAndScrollbackBuffer()
+    let mapPrint = [];
+    let rowPrint = [" "];
+    for(let row of this.map){
+      rowPrint.push("_")
+    }
+    rowPrint.push(" ");
+    mapPrint.push(rowPrint.join(" "));
+    let player1: Player;
+    for(let row of this.map){
+      let rowPrint = [" "];
+      for(let col of row){
+        let { players } = col;
+        if(players.length == 0){
+          rowPrint.push("_")
+          continue;
+        }
+        let color = players[0].color;
+        if(color == "red"){
+          player1 = players[0];
+        }
+        rowPrint.push(color.slice(0,1))
+
+      }
+      rowPrint.push(" ")
+      mapPrint.push(rowPrint.join("|"))
+    }
+
+    console.log(mapPrint.join("\r\n"));
+    this.drawPlayerStats(player1);
+  }
+
+  drawPlayerStats(player1: Player){
+    if(player1){
+      console.log(`id: ${player1.id}`);
+      console.log(`win:`, player1.win);
+    }
+  }
+  
 }
