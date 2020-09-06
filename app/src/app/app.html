@@ -1,15 +1,16 @@
-<div class="container" *ngIf="game">
+-<div class="container" *ngIf="game">
   <div class="row">
     <div class="col-lg-12">
       <button style="margin: 10px;" class="btn btn-success" (click)="startGame()">Start</button>
       <button style="margin: 10px;" class="btn btn-danger" (click)="stopGame()">Stop</button>
       <button style="margin: 10px;" class="btn btn-warning" (click)="setupGame()">Reset</button>
+      <p>humanPlay: {{ humanPlay }}</p>
     </div>
     <div class="col-lg-12">
       <div>
         <label for="totalPlayers">
           Total Players
-          <input type="range" name="totalPlayers" max="500" min="1" [(ngModel)]="totalPlayers"> {{ totalPlayers }}
+          <input type="range" name="totalPlayers" max="500" min="0" [(ngModel)]="totalPlayers"> {{ totalPlayers }}
         </label>
       </div>
       <div>

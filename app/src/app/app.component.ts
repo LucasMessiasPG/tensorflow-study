@@ -24,6 +24,9 @@ export class AppComponent {
   minWeigth: number = -1;
   maxWeigth: number = 1;
   totalPlayers: number = 100;
+  me = new Player("green");
+  nextMovement: string = "ArrowUp";
+  humanPlay = false;
 
   bluePositions: number[][] = [
     [0,0],
@@ -54,31 +57,54 @@ export class AppComponent {
       } 
     }
     this.game = new Game(design);
+    
+    this.me.setMapSize([this.row, this.col]);
+  }
+
+  @HostListener('window:keyup', ['$event'])
+  onKeyUp(evt){
+    if(evt.code == "KeyS"){
+      if(this.bestPlayer && this.game.status == "stop"){
+        this.runGame(this.bestPlayer);
+      }
+    }
+    if(evt.code == "KeyA"){
+      this.humanPlay = !this.humanPlay;
+    }
+    let movement = [
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight"
+    ]
+    if(movement.includes(evt.code)){
+      this.nextMovement = evt.code;
+    }
   }
 
   stopGame(){
     this.game.stop();
   }
 
-  startGame(){
+  async startGame(){
     let initialPlayer: Player = this.bestPlayer;
     if(!initialPlayer){
       initialPlayer = this.createPlayer("red");
     }
-    this.runGame(initialPlayer);
+    await this.runGame(this.humanPlay ? this.me : initialPlayer);
   }
 
   nextPositionPlayer2(){
     this.positionIndex++;
   }
 
-  endGame(bestOldPlayer){
+  async endGame(bestOldPlayer){
     this.game.stop();
     let playersScore = [];
 
     if(this.hasWinner()){
       this.nextPositionPlayer2()
-      playersScore = this.players1.map(p => {
+      playersScore = [this.humanPlay ? this.me : void 0].concat(this.players1).filter(p => p).map(p => {
         return {
           win: true,
           player: p,
@@ -96,12 +122,17 @@ export class AppComponent {
       return a.score - b.score;
     });
 
-    this.bestPlayer = _.first(playersScore).player.fullCopy();
+    this.bestPlayer = await _.first(playersScore).player.fullCopy();
     this.clearListPlayer1();
-    this.runGame(this.bestPlayer);
+
+    if(this.humanPlay && this.me.win){
+      await this.me.train();
+    }
+    // this.runGame(this.bestPlayer);
   }
 
   hasWinner(){
+    if(this.me.win) return true;
     return this.players1.some(player1 => player1.win);
   }
 
@@ -114,9 +145,10 @@ export class AppComponent {
   }
 
   createListPlayer1(playerToCopy: Player){
+    playerToCopy.color = "red";
     let listPlayers = [];
     for(let i = 0; i < this.totalPlayers; i++){
-      listPlayers.push(this.createPlayer(playerToCopy.color));
+      listPlayers.push(this.createPlayer("red"));
     }
     playerToCopy.brain.dispose();
     this.players1 = listPlayers;
@@ -182,8 +214,9 @@ export class AppComponent {
     return this.player2;
   }
 
-  runGame(bestPlayer?: Player){
+  async runGame(bestPlayer?: Player){
     this.game.resetGame()
+    this.game.status = "playing"
 
     let player2 = this.createPlayer2();
     let player2Position = this.getNextPositionPlayer2();
@@ -193,36 +226,59 @@ export class AppComponent {
     if(bestPlayer.position){
       this.game.setOldBestPlayerPosition(bestPlayer.position);
     }
-    let players1 = this.createListPlayer1(bestPlayer.fullCopy());
+    let players1 = this.createListPlayer1(await bestPlayer.fullCopy());
     for(let player1 of players1){
       this.game.newPlayer(player1, [ 7, 7]);
     }
 
-    this.game.start(() => {
+    if(this.humanPlay){
+      this.me = await this.me.copy();
+      if(this.me){
+        this.game.newPlayer(this.me, [ 7, 7 ])
+      }
+    }
+
+    this.game.start(async () => {
       // frame (1 second)
-      for(let player of this.players1){
-        if(player.win){
-          this.endGame(player);
-          break;
-        }
-        let keyPress = player.predictMovement(this.game.getAdjacentsTiles(player.position));
-        if(keyPress){
-          player.movement(keyPress);
+
+      if(this.humanPlay && this.me){
+        let keyPredict = this.me.predictMovement(this.nextMovement);
+        // console.log(keyPredict, this.nextMovement);
+        this.me.movement(this.nextMovement);
+      }
+
+      if(this.humanPlay && this.me.win){
+        await this.endGame(this.me);
+      } else {
+        for(let player of this.players1){
+          if(player.win){
+            await this.endGame(player);
+            break;
+          }
+          let keyPress = player.predictMovement();
+          if(keyPress){
+            player.movement(keyPress);
+          }
+  
         }
 
       }
+
+      if(this.players1.length){
+        let bkpPlayer = await this.players1[0].fullCopy();
+        this.players1 = this.players1.filter(player => {
+          return  player.lose === false
+        });
+  
+        if(!this.players1.length){
+          this.players1.push(bkpPlayer);
+          return this.endGame(bestPlayer);
+        }
+      }
+
       if(this.player2.lose === false){
         // let keyPress = player2.predictRunner(this.game.getAdjacents(player2.position));
         // player2.movement(player2.randomMoment());
-      }
-      let bkpPlayer = this.players1[0].fullCopy();
-      this.players1 = this.players1.filter(player => {
-        return  player.lose === false
-      });
-
-      if(!this.players1.length){
-        this.players1.push(bkpPlayer);
-        return this.endGame(bestPlayer);
       }
     }, () => this.endGame(bestPlayer));
   }

@@ -91,7 +91,9 @@ export default class Game{
   }
 
   hitOtherPlayer(players, player: Player){
-    return players.some(_player => _player.color != player.color);
+    return players.some(_player => {
+      return _player.color == "blue" && _player.color != player.color;
+    });
   }
 
   putPlayerOnMap(player: Player){
@@ -176,26 +178,33 @@ export default class Game{
     this.putPlayerOnMap(player);
   }
 
-  start(frameUpdate: Function, endFn: Function){
+  async start(frameUpdate: Function, endFn: Function){
     let speed = this.speed;
-    this.interval = setInterval(() => {
-      if(speed != this.speed){
-        clearInterval(this.interval);
-        return this.start(frameUpdate, endFn);
-      }
-      this.nextStep(frameUpdate, endFn);
-    }, speed);
+    this.status = "playing";
+    while(this.status == "playing"){
+      let timeout = new Promise(resolve => setTimeout(resolve, speed));
+      await this.nextStep(frameUpdate, endFn);
+      await timeout;
+    }
+
+    // this.interval = setInterval(() => {
+    //   if(speed != this.speed){
+    //     clearInterval(this.interval);
+    //     return this.start(frameUpdate, endFn);
+    //   }
+    //   this.nextStep(frameUpdate, endFn);
+    // }, speed);
   }
 
   stop(){
-    if(this.interval) clearInterval(this.interval);
+    this.status = "stop";
   }
 
-  nextStep(frameUpdate: Function, endFn: Function){
+  async nextStep(frameUpdate: Function, endFn: Function){
     this.time++
-    frameUpdate();
+    await frameUpdate();
     if(this.time > this.timeout){
-      this.gameOver("timeout");
+      await this.gameOver("timeout");
       return endFn();
     }
   }
