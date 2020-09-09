@@ -238,8 +238,6 @@ export default class Player{
       indexMovement
     ])
 
-    console.log("history", this.color, this.historyMovement);
-
     return key;
   }
 

@@ -9,12 +9,13 @@ const Log = DEBUG("tf.nn");
 const INPUTS = 4;
 const NODES = 64;
 const OUTPUTS = 1;
-const EPOCHS = 30;
-const BATCH = 1;
+const EPOCHS = 90;
+const BATCH = 5;
 
 export default class NeuralNetwork{
 
   model: tf.Sequential;
+  training = false;
   constructor(nn?: any){
     if(nn){
       this.model = nn;
@@ -58,16 +59,22 @@ export default class NeuralNetwork{
     this.model.dispose();
   }
 
+  onEpochEnd(epoch, logs){
+    // console.log({ epoch, batch, logs });
+    Log(`epoch: ${epoch} - loss: ${logs.loss} - mse: ${logs.mse}`)
+  }
+
   async train(history: any[]){
-    Log({history});
+    
     let X = history.map(h => h.slice(0,4))
     let y = history.map(h => h.slice(4))
-
+    Log({X, y});
     Log("treinando");
+    this.training = true;
     await this.model.fit(tf.tensor2d(X,[X.length,4]), tf.tensor2d(y,[y.length,1]),  {
       epochs: EPOCHS,
       batchSize: BATCH,
-      // callbacks: {onBatchEnd}
+      callbacks: { onEpochEnd: this.onEpochEnd }
     })
     .then(() => {
       let predictY = this.model.predict(tf.tensor2d(X,[X.length,4]));
@@ -77,6 +84,9 @@ export default class NeuralNetwork{
     })
     .catch(err => {
       Log("ERROR -> " , err);
+    })
+    .then(() => {
+      this.training = false;
     })
 
   }

@@ -21,10 +21,16 @@ export class AppComponent {
   nextObjetive: number[] = [];
   playerDebug: any;
   debug: boolean;
+ 
   minWeigth: number = -1;
   maxWeigth: number = 1;
-  totalPlayers: number = 100;
-  me = new Player("green");
+
+
+  totalPlayers: number = 0;
+  gameSpeed: number = 100;
+  gameTimeout: number = 50;
+
+  me: Player;
   nextMovement: string = "ArrowUp";
   humanPlay = false;
 
@@ -56,21 +62,44 @@ export class AppComponent {
         design[i][j] = 1; 
       } 
     }
-    this.game = new Game(design);
     
-    this.me.setMapSize([this.row, this.col]);
+    this.game = new Game(design);
+
+    if(this.gameSpeed){
+      this.game.speed = this.gameSpeed;
+    }
+
+    if(this.gameTimeout){
+      this.game.timeout = this.gameTimeout;
+    }
+
+    this.me = this.createPlayer("green");
   }
 
-  @HostListener('window:keyup', ['$event'])
+  @HostListener('window:keydown', ['$event'])
   onKeyUp(evt){
-    if(evt.code == "KeyS"){
-      if(this.bestPlayer && this.game.status == "stop"){
-        this.runGame(this.bestPlayer);
+    if(evt.key.toLowerCase() == "r"){
+      this.runGame(new Player("red"))
+      .then(() => {
+        this.game.stop();
+      })
+      
+    } else if(evt.key.toLowerCase() == "s"){
+      if(this.game.status == "waiting"){
+        this.startGame();
+      }if(this.game.status == "stop"){
+        this.playGame(this.bestPlayer);
+      } else if(this.game.status == "playing"){
+        this.game.stop();
+      } else {
+        console.log(this.game.status);
       }
     }
-    if(evt.code == "KeyA"){
+
+    if(evt.key.toLowerCase() == "a"){
       this.humanPlay = !this.humanPlay;
     }
+
     let movement = [
       "ArrowUp",
       "ArrowDown",
@@ -126,7 +155,9 @@ export class AppComponent {
     this.clearListPlayer1();
 
     if(this.humanPlay && this.me.win){
+      this.game.status = "training";
       await this.me.train();
+      this.game.status = "stop";
     }
     // this.runGame(this.bestPlayer);
   }
@@ -215,13 +246,14 @@ export class AppComponent {
   }
 
   async runGame(bestPlayer?: Player){
+    if(!this.humanPlay && !this.totalPlayers){
+      console.log("no players");
+      return ;
+    }
     this.game.resetGame()
     this.game.status = "playing"
 
-    let player2 = this.createPlayer2();
-    let player2Position = this.getNextPositionPlayer2();
-    this.game.newPlayer(player2, player2Position);
-    this.game.setObjetive(player2);
+    this.newObjective();
 
     if(bestPlayer.position){
       this.game.setOldBestPlayerPosition(bestPlayer.position);
@@ -238,10 +270,28 @@ export class AppComponent {
       }
     }
 
+    this.playGame(bestPlayer);
+  }
+
+  newObjective(){
+    let player2 = this.createPlayer2();
+    let player2Position = this.getNextPositionPlayer2();
+    this.game.newPlayer(player2, player2Position);
+    this.game.setObjetive(player2)
+  }
+
+  playGame(bestPlayer){
     this.game.start(async () => {
       // frame (1 second)
 
+      if(!this.game.objetive){
+        this.newObjective();
+      }
+
       if(this.humanPlay && this.me){
+        if(!this.me.position){
+          this.game.newPlayer(this.me, [7,7]);
+        }
         let keyPredict = this.me.predictMovement(this.nextMovement);
         // console.log(keyPredict, this.nextMovement);
         this.me.movement(this.nextMovement);
@@ -276,10 +326,6 @@ export class AppComponent {
         }
       }
 
-      if(this.player2.lose === false){
-        // let keyPress = player2.predictRunner(this.game.getAdjacents(player2.position));
-        // player2.movement(player2.randomMoment());
-      }
-    }, () => this.endGame(bestPlayer));
+    }, () => this.endGame(bestPlayer))
   }
 }

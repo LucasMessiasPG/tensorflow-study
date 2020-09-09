@@ -186,14 +186,6 @@ export default class Game{
       await this.nextStep(frameUpdate, endFn);
       await timeout;
     }
-
-    // this.interval = setInterval(() => {
-    //   if(speed != this.speed){
-    //     clearInterval(this.interval);
-    //     return this.start(frameUpdate, endFn);
-    //   }
-    //   this.nextStep(frameUpdate, endFn);
-    // }, speed);
   }
 
   stop(){
