@@ -9,8 +9,8 @@ const Log = DEBUG("tf.nn");
 const INPUTS = 4;
 const NODES = 64;
 const OUTPUTS = 1;
-const EPOCHS = 90;
-const BATCH = 5;
+const EPOCHS = 60;
+const BATCH = 1;
 
 export default class NeuralNetwork{
 
@@ -96,12 +96,14 @@ export default class NeuralNetwork{
     // @ts-ignore
     return tf.tidy(() => {
       const modelCopy = NeuralNetwork.createModel();
-      const w = this.model.getWeights();
-      for (let i = 0; i < w.length; i++) {
-        w[i] = w[i].clone();
-      }
       
-      modelCopy.setWeights(w);
+      // const w = this.model.getWeights();
+      
+      // for (let i = 0; i < w.length; i++) {
+      //   w[i] = w[i].clone();
+      // }
+      
+      modelCopy.setWeights(this.model.getWeights(true));
       
       const nn = new NeuralNetwork(modelCopy);
       return nn;
@@ -129,10 +131,8 @@ export default class NeuralNetwork{
     return tf.tidy(() => {
       let xs = tf.tensor([input_array]);
       let ys = this.model.predict(xs);
-
       // @ts-ignore
-      let y_values = ys.dataSync();
-      return y_values;
+      return ys.dataSync();
     });
   }
 }

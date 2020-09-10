@@ -92,7 +92,7 @@ export default class Player{
         console.trace(1);
       }
       // @ts-ignore
-      this.brain = await brain.copy(this.color, history);
+      this.brain = await brain.copy();
       if(!ignoreMutation){
         this.mutation();
       }
@@ -203,7 +203,7 @@ export default class Player{
     // inputs[6] = map(Math.abs(y - y2), 0, this.mapSize[1], 0, 1);
 
 
-    let action = this.brain.predict(inputs);    
+    let action = this.brain.predict(inputs);
 
     if(this.color != "green"){
       Log(action);

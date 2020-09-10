@@ -79,7 +79,7 @@ export class AppComponent {
   @HostListener('window:keydown', ['$event'])
   onKeyUp(evt){
     if(evt.key.toLowerCase() == "r"){
-      this.runGame(new Player("red"))
+      this.runGame(this.bestPlayer || new Player("red"))
       .then(() => {
         this.game.stop();
       })
@@ -87,8 +87,12 @@ export class AppComponent {
     } else if(evt.key.toLowerCase() == "s"){
       if(this.game.status == "waiting"){
         this.startGame();
-      }if(this.game.status == "stop"){
-        this.playGame(this.bestPlayer);
+      }if(this.game.status == "stop"){        
+        if(this.me.win){
+          this.runGame(this.bestPlayer);
+        } else {
+          this.playGame(this.bestPlayer);
+        }
       } else if(this.game.status == "playing"){
         this.game.stop();
       } else {
@@ -152,6 +156,7 @@ export class AppComponent {
     });
 
     this.bestPlayer = await _.first(playersScore).player.fullCopy();
+    console.log("this.bestPlayer color", this.bestPlayer.color);
     this.clearListPlayer1();
 
     if(this.humanPlay && this.me.win){
