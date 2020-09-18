@@ -23,7 +23,7 @@ export class Game{
   ];
 
   constructor(target: Position, opt?: { sizeMap: number }){
-    if(target[0] > opt.sizeMap || target[1] > opt.sizeMap){
+    if(target[0] >= opt.sizeMap || target[1] >= opt.sizeMap){
       throw new Error(`target out range of map: sizeMap ${opt.sizeMap} - target ${target}`)
     }
     this.target = target;
@@ -64,7 +64,7 @@ export class Game{
       default: 
         throw new Error(`${keyPress} is not a valid moviment`);
     }
-    if(row < 0 || col < 0 || row > this.sizeMap || col > this.sizeMap){
+    if(row < 0 || col < 0 || row >= this.sizeMap || col >= this.sizeMap){
       return player.setPosition(player.position);
     }
     await player.setPosition([row, col]);

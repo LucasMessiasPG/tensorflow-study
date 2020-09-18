@@ -18,7 +18,7 @@ export class Setup{
     this.game = new Game(opt.target, { sizeMap: this.sizeMap });
   }
 
-  createPlayer(color, opt: { position: Position }){
+  createPlayer(color: string, opt: { position: Position }){
     let player = new Player(color , opt);
     this.game.registerPlayer(player, opt.position)
     return player;
@@ -36,10 +36,12 @@ export class Setup{
 
     // @ts-ignore
     if(this.game.status == "end"){
-      return fnEnd();
+      fnEnd();
+      return ;
     }
 
-    return this.step(fnStep, fnEnd);
+    this.step(fnStep, fnEnd);
+    return ;
   }
 
 }

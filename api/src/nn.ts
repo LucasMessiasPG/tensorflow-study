@@ -1,5 +1,5 @@
 import * as tf from "@tensorflow/tfjs";
-import _ from "lodash";
+import * as _ from "lodash";
 import { Moviments } from "./controllers/game";
 
 const INPUTS = 4;
@@ -53,7 +53,7 @@ export class NeuralNetwork{
 
   async train(moviments: number[][]){
 
-    const onEpochEnd = function(epoch: number, logs: tf.Logs){
+    const onEpochEnd = function(epoch: number, logs: any){
       console.log(`epoch: ${epoch} - loss: ${logs.loss} - mse: ${logs.mse}`);
     }
 
@@ -81,14 +81,19 @@ export class NeuralNetwork{
     console.log({ X, y, predict })
   }
 
-  copy(){
+  copy(opt?: any): NeuralNetwork{
+    let { mutate } = opt || { mudate: false};
     let _copy = () => {
       const modelCopy = NeuralNetwork.createModel();
       modelCopy.setWeights(this.model.getWeights(true));
       
       const nn = new NeuralNetwork({ sizeMap: this.sizeMap, model: modelCopy});
+      if(mutate){
+        nn.mutate();
+      }
       return nn;
     }
+
 
     // @ts-ignore
     return tf.tidy(_copy);
