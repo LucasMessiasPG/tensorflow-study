@@ -88,11 +88,8 @@ export default class Player{
   async makeBrain(brain?: NeuralNetwork, opt?: any){
     let { ignoreMutation = false, history } = opt || {};
     if(brain){
-      if(!brain.copy){
-        console.trace(1);
-      }
       // @ts-ignore
-      this.brain = await brain.copy();
+      this.brain = await brain.copy(this.color);
       if(!ignoreMutation){
         this.mutation();
       }
@@ -116,24 +113,19 @@ export default class Player{
   mutation(){
     this.brain.mutate((value: any) => {
       if(this.mutationRate != 0 && random(0, 1) <= this.mutationRate){
-        let _value =  value + randomLib.uniform(-5, 5)();
+        let _value =  value + randomLib.uniform(-1,1)();
         return _value;
       } else {
         return value;
       }
     });
-    if(this.debug) this.debug = false;
-  }
-
-  async fullCopy(){
-    return this.copy({ ignoreMutation: true });
   }
 
   async copy(opt?: any): Promise<Player>{
     let {  mutationRate, debug, minWeigth, maxWeigth, ignoreMutation } = opt || {};
     let player = new Player(this.color);
     player.setMapSize(this.mapSize);
-    player.mutationRate = mutationRate;
+    player.mutationRate = mutationRate || this.mutationRate;
     player.debug = debug;
     
     if(typeof minWeigth != "undefined"){
@@ -175,18 +167,18 @@ export default class Player{
     return movement[randomMove];
   }
 
-  predictMovement(forceMovement?){
+  predictMovement(forceMovement?: string){
     let inputs = [];
 
     let [ y, x ] = this.position;
     let [ y2, x2 ] = this.objetive;
     let diffx = Math.pow((x - x2),2);
     let diffy = Math.pow((y - y2), 2);
-    let score = diffx + diffy;
+    // let score = diffx + diffy;
 
-    if(this.lastBestScore > score){
-      this.lastBestScore = score;
-    }
+    // if(this.lastBestScore > score){
+      // this.lastBestScore = score;
+    // }
 
     const maxDistance = Math.sqrt(Math.pow(15,2) + Math.pow(15,2));
     inputs[0] = map(x, 0, this.mapSize[0], 0 ,1);
@@ -198,16 +190,10 @@ export default class Player{
     // inputs[5] = adjacent[1]; // 0 || 1
     // inputs[6] = adjacent[2]; // 0 || 1
     // inputs[7] = adjacent[3]; // 0 || 1
-    // inputs[4] = map(Math.sqrt(diffx + diffy), 0, maxDistance, 0, 1);
+    inputs[4] = map(Math.sqrt(diffx + diffy), 0, maxDistance, 0, 1);
     // inputs[5] = map(Math.abs(x - x2), 0, this.mapSize[0], 0, 1);
     // inputs[6] = map(Math.abs(y - y2), 0, this.mapSize[1], 0, 1);
 
-
-    let action = this.brain.predict(inputs);
-
-    if(this.color != "green"){
-      Log(action);
-    }
     
     let movement = [
       "ArrowUp",
@@ -219,24 +205,30 @@ export default class Player{
     let key: string = forceMovement;
     
     if(!key){
+      let actions = this.brain.predict(inputs);
+      
+      let maxAction = _.max(actions);
+      let indexAction = _.indexOf(actions, maxAction);
+
+      // Log(`predict actions: ${actions} - maxAction: ${maxAction} - indexAction: ${indexAction}`)
       if (Math.random() < 0.0) {
         Log("random movement");
         key = this.randomMovement()
       } else {
-        key = movement[Math.round(action)];
+        key = movement[indexAction];
       }  
     }
 
 
     let indexMovement = movement.indexOf(key);
     this.historyMovement.push([
-      this.position[0], 
-      this.position[1],
-      this.objetive[0], 
-      this.objetive[1], 
-      // _.range(4).map(number => number === indexMovement ? 1 : 0)
-      indexMovement
-    ])
+      inputs[0], 
+      inputs[1], 
+      inputs[2], 
+      inputs[3], 
+      inputs[4],
+      // indexMovement+1
+    ].concat(_.range(4).map(number => number === indexMovement ? 1 : 0)))
 
     return key;
   }

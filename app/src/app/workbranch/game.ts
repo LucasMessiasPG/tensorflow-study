@@ -1,5 +1,8 @@
 import _ from "lodash";
 import Player from "./player";
+import DEBUG from "debug";
+
+const Log = DEBUG("tf.game");
 
 export default class Game{
   map: { oldBestPlayer: boolean, players: Player[]; }[][];
@@ -107,6 +110,8 @@ export default class Game{
   checkWinLose(player: Player){
     let { players } = this.getRowCol(player.position);
     let hit = this.hitOtherPlayer(players, player);
+    // Log(`>>>> hit: ${hit} - ${player.color}`);
+    this.end = hit;
 
     if(hit){
       if(player.iAmObjetive){

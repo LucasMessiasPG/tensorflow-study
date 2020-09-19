@@ -3,6 +3,9 @@ import Game from "./workbranch/game";
 import Player from "./workbranch/player";
 import _ from "lodash";
 import * as randomLib from "random";
+import DEBUG from "debug";
+
+const Log = DEBUG("tf.app.component");
 
 const api = "http://localhost:8081";
 @Component({
@@ -49,7 +52,7 @@ export class AppComponent {
     this.setupGame();
   }
 
-  setupGame(){
+  async setupGame(){
     if(this.game){
       this.game.stop();
     }
@@ -72,14 +75,14 @@ export class AppComponent {
     if(this.gameTimeout){
       this.game.timeout = this.gameTimeout;
     }
-
-    this.me = this.createPlayer("green");
+    
+    this.me = await this.createPlayer("green");
   }
 
   @HostListener('window:keydown', ['$event'])
   onKeyUp(evt){
     if(evt.key.toLowerCase() == "r"){
-      this.runGame(this.bestPlayer || new Player("red"))
+      this.runGame(this.bestPlayer)
       .then(() => {
         this.game.stop();
       })
@@ -88,15 +91,15 @@ export class AppComponent {
       if(this.game.status == "waiting"){
         this.startGame();
       }if(this.game.status == "stop"){        
-        if(this.me.win){
+        if(this.game.end){
           this.runGame(this.bestPlayer);
         } else {
-          this.playGame(this.bestPlayer);
+          this.playGame();
         }
       } else if(this.game.status == "playing"){
         this.game.stop();
       } else {
-        console.log(this.game.status);
+        Log(">>>>>>>>>>>", this.game.status);
       }
     }
 
@@ -120,51 +123,60 @@ export class AppComponent {
   }
 
   async startGame(){
-    let initialPlayer: Player = this.bestPlayer;
-    if(!initialPlayer){
-      initialPlayer = this.createPlayer("red");
-    }
-    await this.runGame(this.humanPlay ? this.me : initialPlayer);
+    await this.runGame();
   }
 
   nextPositionPlayer2(){
     this.positionIndex++;
   }
 
-  async endGame(bestOldPlayer){
+  async endGame(){
     this.game.stop();
     let playersScore = [];
 
-    if(this.hasWinner()){
-      this.nextPositionPlayer2()
-      playersScore = [this.humanPlay ? this.me : void 0].concat(this.players1).filter(p => p).map(p => {
-        return {
-          win: true,
-          player: p,
-          score: p.winTime
-        }
-      });
-    } else {
-      playersScore = [{
-        player: bestOldPlayer,
-        score: 1
-      }];
-    }
+    playersScore = [this.humanPlay ? this.me : void 0].concat(this.players1).filter(p => p).map(p => {
 
+      let [ y, x ] = p.position;
+      let [ y2, x2 ] = p.objetive;
+      let diffx = Math.pow((x - x2),2);
+      let diffy = Math.pow((y - y2), 2);
+      
+      let distance = Math.sqrt(diffx + diffy)
+
+      return {
+        win: p.win,
+        player: p,
+        score: distance
+      }
+    });
+
+    
     playersScore.sort((a, b) => {
       return a.score - b.score;
     });
 
-    this.bestPlayer = await _.first(playersScore).player.fullCopy();
-    console.log("this.bestPlayer color", this.bestPlayer.color);
-    this.clearListPlayer1();
+    
+    Log("playersScore", playersScore);
 
-    if(this.humanPlay && this.me.win){
+    let winPlayer;
+    if(playersScore.some(p => p.win)){
+      Log("criando novo bestPlayer");
+      winPlayer = playersScore.find(p => p.win);
+      
       this.game.status = "training";
-      await this.me.train();
+      await winPlayer.player.train();
       this.game.status = "stop";
+      
     }
-    // this.runGame(this.bestPlayer);
+
+    this.bestPlayer = await (winPlayer || playersScore[0]).player.copy({ ignoreMutation: true });
+    // this.game.setOldBestPlayerPosition(this.bestPlayer.position);
+
+    if(this.hasWinner()){
+      this.nextPositionPlayer2()
+    }
+
+    this.clearListPlayer1();
   }
 
   hasWinner(){
@@ -172,21 +184,22 @@ export class AppComponent {
     return this.players1.some(player1 => player1.win);
   }
 
-  createPlayer(color: string){
+  async createPlayer(color: string){
     let player = new Player(color);
     player.setMapSize([this.game.map.length, this.game.map[0].length]);
+    // Log("this.game.mutationRate", this.game.mutationRate);
     player.mutationRate = this.game.mutationRate
-    player.makeBrain();
+    await player.makeBrain(null, { ignoreMutation: true });
     return player;
   }
 
-  createListPlayer1(playerToCopy: Player){
-    playerToCopy.color = "red";
+  async createListPlayer1(playerToCopy: Player){
     let listPlayers = [];
     for(let i = 0; i < this.totalPlayers; i++){
-      listPlayers.push(this.createPlayer("red"));
+      let p = await playerToCopy.copy()
+      p.color = "red";
+      listPlayers.push(p);
     }
-    playerToCopy.brain.dispose();
     this.players1 = listPlayers;
     return this.players1
   }
@@ -204,7 +217,7 @@ export class AppComponent {
   }
 
   setObjetive(row, col){
-    this.nextObjetive = [col, row];
+    this.nextObjetive = [row, col];
   }
 
   debugPlayer(){
@@ -244,53 +257,61 @@ export class AppComponent {
     return player2Position;
   }
 
-  createPlayer2(){
+  async createPlayer2(){
     if(this.player2) this.player2.brain.dispose();
-    this.player2 = this.createPlayer("blue")
+    this.player2 = await this.createPlayer("blue")
     return this.player2;
   }
 
   async runGame(bestPlayer?: Player){
+
+    if(!bestPlayer) {
+      bestPlayer = await this.createPlayer("red");
+    }
+
     if(!this.humanPlay && !this.totalPlayers){
-      console.log("no players");
+      Log("no players");
       return ;
     }
     this.game.resetGame()
     this.game.status = "playing"
 
-    this.newObjective();
+    await this.newObjective();
 
     if(bestPlayer.position){
       this.game.setOldBestPlayerPosition(bestPlayer.position);
     }
-    let players1 = this.createListPlayer1(await bestPlayer.fullCopy());
+    
+    let players1 = await this.createListPlayer1(bestPlayer);
     for(let player1 of players1){
       this.game.newPlayer(player1, [ 7, 7]);
     }
 
     if(this.humanPlay){
-      this.me = await this.me.copy();
+      console.log(this.bestPlayer || this.me);
+      this.me = await (this.bestPlayer || this.me).copy({ ignoreMutation: true });
+      this.me.color = "green";
       if(this.me){
         this.game.newPlayer(this.me, [ 7, 7 ])
       }
     }
 
-    this.playGame(bestPlayer);
+    this.playGame();
   }
 
-  newObjective(){
-    let player2 = this.createPlayer2();
+  async newObjective(){
+    let player2 = await this.createPlayer2();
     let player2Position = this.getNextPositionPlayer2();
     this.game.newPlayer(player2, player2Position);
     this.game.setObjetive(player2)
   }
 
-  playGame(bestPlayer){
+  playGame(){
     this.game.start(async () => {
       // frame (1 second)
 
       if(!this.game.objetive){
-        this.newObjective();
+        await this.newObjective();
       }
 
       if(this.humanPlay && this.me){
@@ -298,39 +319,27 @@ export class AppComponent {
           this.game.newPlayer(this.me, [7,7]);
         }
         let keyPredict = this.me.predictMovement(this.nextMovement);
-        // console.log(keyPredict, this.nextMovement);
+        // Log(keyPredict, this.nextMovement);
         this.me.movement(this.nextMovement);
       }
 
-      if(this.humanPlay && this.me.win){
-        await this.endGame(this.me);
-      } else {
+      // if(this.humanPlay && this.me.win){
+      //   await this.endGame(this.me);
+      // } else {
+
+      if(this.game.end === false){
         for(let player of this.players1){
-          if(player.win){
-            await this.endGame(player);
-            break;
-          }
           let keyPress = player.predictMovement();
           if(keyPress){
             player.movement(keyPress);
           }
-  
-        }
-
-      }
-
-      if(this.players1.length){
-        let bkpPlayer = await this.players1[0].fullCopy();
-        this.players1 = this.players1.filter(player => {
-          return  player.lose === false
-        });
-  
-        if(!this.players1.length){
-          this.players1.push(bkpPlayer);
-          return this.endGame(bestPlayer);
         }
       }
 
-    }, () => this.endGame(bestPlayer))
+      if(this.game.end === true) {
+        return this.endGame();
+      }
+
+    }, () => this.endGame())
   }
 }

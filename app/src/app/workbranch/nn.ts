@@ -1,3 +1,4 @@
+import _ from "lodash";
 import DEBUG from "debug";
 import * as tf from "@tensorflow/tfjs";
 // @ts-ignore
@@ -6,10 +7,10 @@ window.tf = tf;
 
 const Log = DEBUG("tf.nn");
 
-const INPUTS = 4;
+const INPUTS = 5;
 const NODES = 64;
-const OUTPUTS = 1;
-const EPOCHS = 60;
+const OUTPUTS = 4;
+const EPOCHS = 20;
 const BATCH = 1;
 
 export default class NeuralNetwork{
@@ -30,28 +31,36 @@ export default class NeuralNetwork{
     let inputlayer = tf.layers.dense({
       inputShape: [INPUTS],
       units: NODES,
-      activation: 'relu'
+      activation: 'sigmoid'
     });
+    
     let hiddenlayers = [];
-    let totalHiddenLayer = 16;
+    let totalHiddenLayer = 0;
     let nodes = NODES;
+
+    
 
     for(let i = 0; i < totalHiddenLayer; i++){
       hiddenlayers.push(tf.layers.dense({
         units: nodes,
-        activation: 'relu'
+        activation: 'sigmoid'
       }));
+      // hiddenlayers.push(tf.layers.leakyReLU())
+      hiddenlayers.push(tf.layers.dropout({ rate:0.1 }))
+
     }
 
     let outputLayer = tf.layers.dense({
       units: OUTPUTS,
-      activation: 'relu'
+      activation: 'softmax'
     });
 
+
     model.add(inputlayer);
+    model.add(tf.layers.dropout({ rate:0.1 }))
     hiddenlayers.forEach(layer => model.add(layer));
     model.add(outputLayer);
-    model.compile({ optimizer: "adam", loss: tf.losses.meanSquaredError, metrics: 'mse' })
+    model.compile({ optimizer: "adam", loss: tf.losses.sigmoidCrossEntropy, metrics: 'accuracy' })
     return model;
   }
 
@@ -60,27 +69,28 @@ export default class NeuralNetwork{
   }
 
   onEpochEnd(epoch, logs){
-    // console.log({ epoch, batch, logs });
-    Log(`epoch: ${epoch} - loss: ${logs.loss} - mse: ${logs.mse}`)
+    // Log({ epoch, logs });
+    Log(`epoch: ${epoch} - loss: ${logs.loss} - acc: ${logs.acc}`)
   }
 
   async train(history: any[]){
     
-    let X = history.map(h => h.slice(0,4))
-    let y = history.map(h => h.slice(4))
+    Log({ history })
+    let X = history.map(h => h.slice(0,5))
+    let y = history.map(h => h.slice(5))
     Log({X, y});
     Log("treinando");
     this.training = true;
-    await this.model.fit(tf.tensor2d(X,[X.length,4]), tf.tensor2d(y,[y.length,1]),  {
+    await this.model.fit(tf.tensor2d(X,[X.length,5]), tf.tensor2d(y,[y.length,4]),  {
       epochs: EPOCHS,
       batchSize: BATCH,
       callbacks: { onEpochEnd: this.onEpochEnd }
     })
     .then(() => {
-      let predictY = this.model.predict(tf.tensor2d(X,[X.length,4]));
+      let predictY = this.model.predict(tf.tensor2d(X,[X.length,5]));
       //@ts-ignore
       let y = predictY.dataSync(); 
-      Log("y =", y);
+      Log("y =", _.chunk(y, 4));
     })
     .catch(err => {
       Log("ERROR -> " , err);
@@ -91,19 +101,21 @@ export default class NeuralNetwork{
 
   }
 
-  async copy() {
+  async copy(color: string) {
     
     // @ts-ignore
     return tf.tidy(() => {
       const modelCopy = NeuralNetwork.createModel();
       
-      // const w = this.model.getWeights();
-      
+      const w = this.model.getWeights();
+      // let sumW = tf.tensor(0)
       // for (let i = 0; i < w.length; i++) {
       //   w[i] = w[i].clone();
+      //   sumW = sumW.add(w[i].sum());
       // }
-      
-      modelCopy.setWeights(this.model.getWeights(true));
+    
+      // Log(`w ${color}:`, sumW.dataSync());
+      modelCopy.setWeights(w);
       
       const nn = new NeuralNetwork(modelCopy);
       return nn;
@@ -115,7 +127,7 @@ export default class NeuralNetwork{
       const w = this.model.getWeights();
       for (let i = 0; i < w.length; i++) {
         let shape = w[i].shape;
-        let arr = w[i].dataSync().slice();
+        let arr = w[i].clone().dataSync().slice();
         for (let j = 0; j < arr.length; j++) {
           arr[j] = func(arr[j]);
         }
