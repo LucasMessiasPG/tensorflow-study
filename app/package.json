@@ -17,6 +17,7 @@
     "webpack-dev-server": "^3.11.0"
   },
   "dependencies": {
+    "@tensorflow/tfjs-vis": "^1.4.3",
     "lodash": "^4.17.20"
   }
 }

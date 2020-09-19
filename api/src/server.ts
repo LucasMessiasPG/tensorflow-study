@@ -1,4 +1,4 @@
-import { Game, Moviments } from "./controllers/game";
+import { Game, Movements } from "./controllers/game";
 import { Setup } from "./controllers/setup";
 import { NeuralNetwork } from "./nn";
 import readline from "readline";
@@ -24,13 +24,13 @@ let randomPosition = function(){
   return rngNumber;
 };
 
-let tagetPossition: [number, number] = [randomPosition(), randomPosition()];
+let targetPossition: [number, number] = [randomPosition(), randomPosition()];
 
 
 let gameStart = async () => {
   
   setup.newGame({
-    target: tagetPossition
+    target: targetPossition
   })
 
   let players = [
@@ -38,21 +38,21 @@ let gameStart = async () => {
   ];
   let playersId = players.map(player => player.id);
 
-  function randomMoviment(): number{
+  function randomMovement(): number{
     return Math.round(Math.random() * 3);
   }
 
-  function readMoviment(done){
+  function readMovement(done){
     console.log("GREEN -----------------");
-    let labelReadLine = setup.game.moviments.reduce((text, moviment, index) => {
-      text += `${index} - ${moviment} \r\n`
+    let labelReadLine = setup.game.movements.reduce((text, movement, index) => {
+      text += `${index} - ${movement} \r\n`
       return text;
     }, "")
     rl.question(labelReadLine, (answer) => {
       answer = +answer
       if([0,1,2,3].includes(answer) === false) {
         console.log("opção invalida")
-        return readMoviment(done);
+        return readMovement(done);
       }
       
       done(answer);
@@ -65,17 +65,17 @@ let gameStart = async () => {
 
     for(let id of playersId){
       let player = setup.getPlayer(id);
-      let movimentIndex = Math.round(Math.random() * 3);
+      let movementIndex = Math.round(Math.random() * 3);
 
       if(player.color == "green"){
-        movimentIndex = await new Promise(resolve => {
-          readMoviment(resolve);
+        movementIndex = await new Promise(resolve => {
+          readMovement(resolve);
         })
       } else {
         if(setup.rounds < BATCH_RANDOM){
-          movimentIndex = randomMoviment();
+          movementIndex = randomMovement();
         } else {
-          movimentIndex = player_brain.predict([
+          movementIndex = player_brain.predict([
             player_brain.map(player.position[0]),
             player_brain.map(player.position[1]),
             player_brain.map(setup.game.target[0]),
@@ -90,11 +90,11 @@ let gameStart = async () => {
         player.position[1],
         setup.game.target[0],
         setup.game.target[1],
-        _.range(4).map((number) => movimentIndex == number ? 1 : 0 )
+        _.range(4).map((number) => movementIndex == number ? 1 : 0 )
       ]
-      player.moviments.push(state);
-      console.log(player.color, player.position, setup.game.target, movimentIndex);
-      await player.moviment(setup.game.moviments[movimentIndex])
+      player.movements.push(state);
+      console.log(player.color, player.position, setup.game.target, movementIndex);
+      await player.movement(setup.game.movements[movementIndex])
 
       if(player.win){
         break;
@@ -109,8 +109,8 @@ let gameStart = async () => {
     if(hasWinner == false){
       player_brain.mutate();
     } else {
-      await player_brain.train(setup.game.winner.moviments);
-      tagetPossition = [randomPosition(), randomPosition()]
+      await player_brain.train(setup.game.winner.movements);
+      targetPossition = [randomPosition(), randomPosition()]
     }
     
     gameStart();

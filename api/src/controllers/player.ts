@@ -1,5 +1,5 @@
 import { v1 } from "uuid";
-import { Moviments, Position } from "./game";
+import { Movements, Position } from "./game";
 
 export class Player {
   id = v1();
@@ -8,13 +8,13 @@ export class Player {
   win = false;
   status: "waiting" | "idle" | "winner" = "idle";
   score: number;
-  moviments: number[][] = [];
+  movements: number[][] = [];
 
   constructor(color: string, opt?: any){
     this.color = color;
   }
 
-  async moviment(keyPress: Moviments){ throw new Error("moviment not implemented"); }
+  async movement(keyPress: Movements){ throw new Error("movement not implemented"); }
 
   async setPosition(position: Position){
     this.position = position;

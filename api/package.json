@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^2.4.0",
+    "@tensorflow/tfjs-vis": "^1.4.3",
     "lodash": "^4.17.20",
     "terminal-kit": "^1.43.0",
     "uuid": "^8.3.0"

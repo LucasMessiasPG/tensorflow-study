@@ -1,7 +1,7 @@
 import { v1 } from "uuid";
 import { Player } from "./player";
 
-export type Moviments = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
+export type Movements = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 export type Position = [ number, number ];
 
 export class Game{
@@ -15,11 +15,12 @@ export class Game{
   winner: Player
   timeout = 20;
 
-  moviments: Moviments[] = [
-    "ArrowUp",
+  movements: Movements[] = [
     "ArrowDown",
-    "ArrowRight",
-    "ArrowLeft"
+    "ArrowLeft",
+    "ArrowRight",    
+    "ArrowUp"
+    
   ];
 
   constructor(target: Position, opt?: { sizeMap: number }){
@@ -35,8 +36,8 @@ export class Game{
   }
 
   registerPlayer(player: Player, position: Position){
-    player.moviment = (keyPress: Moviments) => {
-      return this.actionMoviment(player, keyPress);
+    player.movement = (keyPress: Movements) => {
+      return this.actionMovement(player, keyPress);
     };
     player.setPosition = (position: Position) => {
       return this.actionSetPlayerPosition(player, position)
@@ -44,7 +45,7 @@ export class Game{
     player.setPosition(position);
   }
 
-  async actionMoviment(player: Player, keyPress: Moviments){
+  async actionMovement(player: Player, keyPress: Movements){
     if(!player.position) throw new Error(`player ${player.color}: not has a valid position`);
     let [ row, col ] = player.position;
 
@@ -62,7 +63,7 @@ export class Game{
         row++;
         break;
       default: 
-        throw new Error(`${keyPress} is not a valid moviment`);
+        throw new Error(`${keyPress} is not a valid movement`);
     }
     if(row < 0 || col < 0 || row >= this.sizeMap || col >= this.sizeMap){
       return player.setPosition(player.position);
@@ -85,7 +86,7 @@ export class Game{
     } else {
       if(this.timeout <= this.time){
         this.allLose();
-      // } else if(this.finishAllMoviments()){
+      // } else if(this.finishAllMovements()){
         // this.nextStep();
       }
     }
