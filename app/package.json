@@ -20,7 +20,7 @@
     "@angular/platform-browser-dynamic": "~10.0.4",
     "@angular/router": "~10.0.4",
     "@tensorflow/tfjs": "^2.0.1",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "mathjs": "^7.1.0",
     "rxjs": "~6.5.5",
     "tslib": "^2.0.0",
